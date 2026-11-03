@@ -52,7 +52,11 @@ class CartesianState {
    * @return The state with a new end-effector frame.
    */
   [[nodiscard]] CartesianState changeEndEffectorFrame(const Affine &transform) const {
-    auto offset_world_frame = pose_.end_effector_pose().rotation() * transform.translation();
+    // Evaluate eagerly: with `auto` this would be an Eigen product expression
+    // holding a reference to the temporary returned by rotation(), which is
+    // destroyed at the end of this statement (use-after-free; observed as NaN
+    // target velocities in absolute Cartesian motions with GCC 15 / Eigen 5).
+    const Eigen::Vector3d offset_world_frame = pose_.end_effector_pose().rotation() * transform.translation();
     return {pose_.changeEndEffectorFrame(transform), velocity_.changeEndEffectorFrame(offset_world_frame)};
   }
 
